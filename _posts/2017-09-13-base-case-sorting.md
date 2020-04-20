@@ -107,7 +107,7 @@ it could copy the item directly into their targeted locations since what
 was being sorted were the macro expansions. As such, this would be a
 optimal for minimizing copies when the original array can't be re-used.
 
-Peter Cordes recommends on StackOverflow: https://stackoverflow.com/a/39336981/2250147
+Peter Cordes recommends on Stack Overflow: https://stackoverflow.com/a/39336981/2250147
 ```
 You can use vmovmskps on integer vectors (with a cast to keep the
 intrinsics happy), avoiding the need to right-shift the bitscan (ffs)

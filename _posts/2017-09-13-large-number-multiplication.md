@@ -5,7 +5,7 @@ date:   2017-09-13 10:35:00 -0700
 categories: story
 ---
 
-This is a rememberance of a programming project in my childhood where I
+This is a remembrance of a programming project in my childhood where I
 tried to provide a natural C++ API for arithmetic on the GPU to compute
 large numeric constants.
 

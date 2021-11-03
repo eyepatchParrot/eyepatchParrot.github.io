@@ -12,4 +12,4 @@ searching and sorting algorithms.
 Interested in algorithms, C++, databases, file systems, GPUs, and how
 to best make use of multi-core CPUs with SIMD.
 
-# [Resume]({{ site.url }}/assets/vansandt-resume.pdf)
+# [2020 Resume]({{ site.url }}/assets/vansandt-resume.pdf)

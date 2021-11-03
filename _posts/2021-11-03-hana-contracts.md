@@ -7,6 +7,8 @@ categories: experiment
 
 A sketch of using hana to reduce overloads and check newly introduced lemmas.
 
+[https://gcc.godbolt.org/z/WradzeKs9](https://gcc.godbolt.org/z/WradzeKs9)
+
 ```c++
 // Inspired by http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1773r0.pdf
 #include <exception>
@@ -84,7 +86,7 @@ private:
     ValidRef(const T& x, RaiseUnless) : ValidRef(ValidRef<T, Proof<>>(x, Assume{}), RaiseUnless{}) {}; 
     template<class... GivensT> ValidRef(ValidRef<T, Proof<GivensT...>> x, RaiseUnless)
         : ValidRef(x, [&x](const auto lemma) {
-            throw PreconditionError<decltype(lemma)>(x.t);
+            throw PreconditionError<typename decltype(lemma)::type>(x.t);
         }) {}
 
     // AbortUnless
@@ -104,7 +106,9 @@ private:
     template<class... GivensT> ValidRef(ValidRef<T, Proof<GivensT...>> x)
         : ValidRef(x, ValidDefault{}) {}
 
-    operator const T&() { Proof<LemmasT...>::optimize(t); return t; }
+    void optimize() { Proof<LemmasT...>::optimize(t); }
+    operator const T&() { optimize(); return t; }
+    const T& value() { return t; }
 };
 
 template<auto Divisor> struct DivisibleBy {
@@ -126,7 +130,7 @@ template<auto Expected> struct NotEqual {
 void limiter(float* data, ValidRef<size_t, Proof<NotEqual<0ul>, DivisibleBy<32ul>>> size)
 {
     for (size_t i = 0; i < size; ++i)
-    data[i] = std::clamp(data[i], -1.0f, 1.0f);
+      data[i] = std::clamp(data[i], -1.0f, 1.0f);
 }
 
 auto limiter_default(float* data, size_t size) {
@@ -142,11 +146,19 @@ auto limiter_assume(float* data, size_t size) {
     return limiter(data, {size, assume_v});
 }
 
+void limiter_slow(float* data, size_t size)
+{
+    for (size_t i = 0; i < size; ++i)
+      data[i] = std::clamp(data[i], -1.0f, 1.0f);
+}
+auto limiter_slow_two_step(float* data, ValidRef<size_t, Proof<NotEqual<0ul>, DivisibleBy<32ul>>> size) {
+    size.optimize();
+    return limiter_slow(data, size.value()); // the implicit operator T& will also optimize
+}
+
 // Alternative extensible ordering with default
 // #define LEMMA(T, N) hana::int_<N> order_t(hana::type<T>) { return {}; } void dup_check(hana::int_<N>) {}
 // hana::int_<0> order_t(...) { return {}; }
 // ORDER(Z, 1);
 // ORDER(N, 2);
 ```
-
-https://gcc.godbolt.org/z/cb9G7oWe7

@@ -1,9 +1,12 @@
+# Return Elision Errors
+<!---
 ---
 layout: post
 title:  "Return Elision Errors"
 date:   2021-11-03 02:39:00 -0700
 categories: experiment
 ---
+-->
 
 A sketch of errors which support no-move no-copy types by inverting the function return flow. Encapsulated into a future-like interface for clarity.
 

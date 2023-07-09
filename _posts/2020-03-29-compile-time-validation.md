@@ -1,9 +1,12 @@
+# Compile time validation and optimization
+<!---
 ---
 layout: post
 title:  "Compile time validation and optimization"
 date:   2020-03-29 20:19:29 -0700
 categories: experiment
 ---
+-->
 
 Annotate references and values to reduce runtime errors, improve optimization, and specify requirements more explicitly.
 

@@ -1,9 +1,12 @@
+# Hana contacts as a library
+<!---
 ---
 layout: post
 title:  "Hana Contracts as a Library"
 date:   2021-11-03 03:24:00 -0700
 categories: experiment
 ---
+-->
 
 A sketch of using hana to reduce overloads and check newly introduced lemmas.
 

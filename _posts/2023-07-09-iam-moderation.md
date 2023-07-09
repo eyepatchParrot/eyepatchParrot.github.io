@@ -4,6 +4,7 @@ What if social networks exposed moderation to users as a role which included a s
 I enjoy listening to the Oxide and Friends podcast and they had a recent episode on moderation of federated social networks.
 A take that I would be interested to hear feedback on would be to allow for a kind of opt-in moderation, and the best analogy I could come up with was accounts management.
 For the first pages in a user's feed, your social network provides a basket of posts filtered from available posts on the site.
+[https://oxide.computer/podcasts/oxide-and-friends/1318994](https://oxide.computer/podcasts/oxide-and-friends/1318994)
 
 Some examples of filters:
 1. Is this post near the user's network?

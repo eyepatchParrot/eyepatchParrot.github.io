@@ -1,4 +1,5 @@
 # Compile time validation and optimization
+*2020-02-23*
 <!---
 ---
 layout: post

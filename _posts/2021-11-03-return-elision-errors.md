@@ -1,4 +1,5 @@
 # Return Elision Errors
+*2021-11-03*
 <!---
 ---
 layout: post
@@ -13,7 +14,7 @@ A sketch of errors which support no-move no-copy types by inverting the function
 This goes down a whole rabbit hole of converting between different error types automatically, which unfortunately distracts from the error handling.
 Everything interesting happens in ResultT and BindFirst. I seem to remember this being adaptable to having multiple output streams like a sort of `tee`. Hopefully, I can re-find that example.
 
-https://gcc.godbolt.org/z/YacxPesfM
+[https://gcc.godbolt.org/z/YacxPesfM](https://gcc.godbolt.org/z/YacxPesfM)
 
 ```c++
 #include <sstream>

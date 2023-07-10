@@ -110,6 +110,7 @@ FixedString eval_read(Cmd cmd) {
     return rv;
 }
 
+#define CMD0(...) (struct Cmd){ .args = (Str[]){ __VA_ARGS__ , NULL} }
 void pipe_all(Pipe pipeline) {
     // Validate input
     FATAL_IF(pipeline.len == 0);
@@ -145,7 +146,14 @@ void pipe_all(Pipe pipeline) {
             }
 
             // Execute the command using execve
-            execve(pipeline.cmds[i].args[0], (char*const*)pipeline.cmds[i].args, NULL);
+            _Bool has_slash = NULL != strchr(pipeline.cmds[i].args[0], '/');
+            FixedString path_which;
+            char const * path = pipeline.cmds[i].args[0];
+            if (0 == has_slash) {
+                path_which = trim_nl(eval_read(CMD0("/usr/bin/which", path)));
+                path = path_which.buf;
+            }
+            execve(path, (char*const*)pipeline.cmds[i].args, NULL);
             perror("execve() failed");
             exit(1);
         } else {
@@ -170,7 +178,6 @@ void pipe_all(Pipe pipeline) {
 }
 
 
-#define CMD0(...) (struct Cmd){ .args = (Str[]){ __VA_ARGS__ , NULL} }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
@@ -182,22 +189,17 @@ void pipe_all(Pipe pipeline) {
     .len = sizeof((Cmd[]){ __VA_ARGS__})/sizeof(Cmd), \
     .cmds = (Cmd[]){ __VA_ARGS__}, \
 }
-#define PIPE_ALL(...) pipe_all(PIPE(__VA_ARGS__))
+#define CHAIN(...) pipe_all(PIPE(__VA_ARGS__))
 
 #define SUBPROC(...) eval(CMD(__VA_ARGS__))
 
 int main() {
     FATAL_UNLESS(0 == setenv("LC_ALL", "C", 1));
-    PIPE_ALL(
-        CMD(/usr/bin/env, find, _posts, -type, f),
-        CMD(/usr/bin/env, sort, -r),
-        CMD(/usr/bin/env, xargs, cat),
-        CMD(/usr/bin/env, tee, index.md),
-        CMD(/usr/bin/env, tail),
+    CHAIN(
+        CMD(find, _posts, -type, f),
+        CMD(sort, -r),
+        CMD(xargs, cat),
+        CMD(tee, index.md),
+        CMD(tail),
     );
 }
-// FixedString find = trim_nl(eval_read(CMD("/usr/bin/which", "find")));
-// FixedString sort = trim_nl(eval_read(CMD("/usr/bin/which", "sort")));
-// FixedString xargs = trim_nl(eval_read(CMD("/usr/bin/which", "xargs")));
-// FixedString tee = trim_nl(eval_read(CMD("/usr/bin/which", "tee")));
-// FixedString tail = trim_nl(eval_read(CMD("/usr/bin/which", "tail")));

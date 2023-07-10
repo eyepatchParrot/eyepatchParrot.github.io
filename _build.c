@@ -6,10 +6,16 @@
 #include <string.h>
 #define STRINGIFY(x) #x
 #define STR(x) STRINGIFY(x)
+
 typedef char const * Str;
 typedef struct Cmd {
     Str *args;
 } Cmd;
+typedef struct Pipe {
+    size_t len;
+    Cmd *cmds;
+} Pipe;
+
 
 #define LEN(x) (sizeof(x)/sizeof(x[0]))
 
@@ -104,11 +110,6 @@ FixedString eval_read(Cmd cmd) {
     return rv;
 }
 
-typedef struct Pipe {
-    size_t len;
-    Cmd *cmds;
-} Pipe;
-
 void pipe_all(Pipe pipeline) {
     // Validate input
     FATAL_IF(pipeline.len == 0);
@@ -168,23 +169,32 @@ void pipe_all(Pipe pipeline) {
     wait(NULL);
 }
 
-#define CMD(...) (struct Cmd){ .args = (Str[]){ __VA_ARGS__ , NULL} }
+
+#define CMD0(...) (struct Cmd){ .args = (Str[]){ __VA_ARGS__ , NULL} }
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#include "p99/p99_for.h"
+#pragma GCC diagnostic pop
+
+#define CMD(...) (struct Cmd){ .args = (Str[]){ P99_SEQ(STRINGIFY, __VA_ARGS__) , NULL} }
 #define PIPE(...) (struct Pipe){ \
     .len = sizeof((Cmd[]){ __VA_ARGS__})/sizeof(Cmd), \
     .cmds = (Cmd[]){ __VA_ARGS__}, \
 }
+#define PIPE_ALL(...) pipe_all(PIPE(__VA_ARGS__))
 
 #define SUBPROC(...) eval(CMD(__VA_ARGS__))
 
 int main() {
     FATAL_UNLESS(0 == setenv("LC_ALL", "C", 1));
-    pipe_all(PIPE(
-        CMD("/usr/bin/env", "find", "_posts", "-type", "f"),
-        CMD("/usr/bin/env", "sort", "-r"),
-        CMD("/usr/bin/env", "xargs", "cat"),
-        CMD("/usr/bin/env", "tee", "index.md"),
-        CMD("/usr/bin/env", "tail"),
-    ));
+    PIPE_ALL(
+        CMD(/usr/bin/env, find, _posts, -type, f),
+        CMD(/usr/bin/env, sort, -r),
+        CMD(/usr/bin/env, xargs, cat),
+        CMD(/usr/bin/env, tee, index.md),
+        CMD(/usr/bin/env, tail),
+    );
 }
 // FixedString find = trim_nl(eval_read(CMD("/usr/bin/which", "find")));
 // FixedString sort = trim_nl(eval_read(CMD("/usr/bin/which", "sort")));

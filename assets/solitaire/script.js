@@ -55,7 +55,7 @@ function renderTableau() {
         pileElement.innerHTML = '';
         pile.forEach((card, cardIndex) => {
             const isTopmost = cardIndex === pile.length - 1;
-            const cardElement = createCardElement(card, true, isTopmost);
+            const cardElement = createCardElement(card, isTopmost, isTopmost);
             cardElement.style.top = `${cardIndex * 20}px`; // Reduced spacing between cards
             cardElement.style.zIndex = cardIndex; // Ensure proper stacking
             pileElement.appendChild(cardElement);

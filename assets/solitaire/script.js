@@ -55,7 +55,7 @@ function renderTableau() {
         pileElement.innerHTML = '';
         pile.forEach((card, cardIndex) => {
             const isTopmost = cardIndex === pile.length - 1;
-            const cardElement = createCardElement(card, isTopmost, isTopmost);
+            const cardElement = createCardElement(card, true, isTopmost);
             cardElement.style.top = `${cardIndex * 20}px`; // Reduced spacing between cards
             cardElement.style.zIndex = cardIndex; // Ensure proper stacking
             pileElement.appendChild(cardElement);
@@ -68,7 +68,7 @@ function renderPile(pile, elementId) {
     pileElement.innerHTML = '';
     pile.forEach((card, index) => {
         const isTopmost = index === pile.length - 1;
-        const cardElement = createCardElement(card, true, isTopmost);
+        const cardElement = createCardElement(card, isTopmost, isTopmost);
         if (!elementId.startsWith("foundation-")) {
             cardElement.style.top = `${index * 20}px`;
         } else {

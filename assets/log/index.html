@@ -18,26 +18,12 @@
         </header>
 
         <section class="card">
-            <div class="control-center" id="control-center">
-                <div class="current-activity-display" id="current-activity-display">
-                    <!-- Current activity shown here -->
-                </div>
-                <div class="timer" id="timer">00h 00m</div>
-                <div class="start-activity-form">
-                    <input type="text" id="new-activity-name" class="activity-input" placeholder="What are you doing?">
-                    <button id="delete-preset-btn">-</button>
-                    <button id="start-stop-btn">Start</button>
-                </div>
-                <div class="preset-buttons" id="preset-buttons">
-                    <!-- Preset buttons injected here -->
-                </div>
-            </div>
-        </section>
-
-        <section class="card">
             <div class="log-header">
                 <h2 id="log-title">Today's Log</h2>
                 <button id="set-date-btn" hidden>Use this date for new entries</button>
+            </div>
+            <div class="preset-buttons" id="preset-buttons">
+                <!-- Preset buttons injected here -->
             </div>
             <div class="total-today" id="total-today">Total: <strong>0h 0m</strong></div>
             <ul class="log-list" id="activity-log">
@@ -46,11 +32,22 @@
         </section>
 
         <section class="card">
+            <div class="control-center" id="control-center">
+                <div class="start-activity-form">
+                    <input type="text" id="new-activity-name" class="activity-input" placeholder="What are you doing?">
+                    <button id="delete-preset-btn">-</button>
+                    <button id="start-stop-btn">Start</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="card">
             <h2>Recent Days</h2>
             <ul class="recent-days-list" id="recent-days-list">
                 <!-- Recent days summary injected here -->
             </ul>
         </section>
+
     </div>
 
     <script src="app.js"></script>

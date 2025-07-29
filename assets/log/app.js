@@ -1,7 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
-    const currentActivityDisplay = document.getElementById('current-activity-display');
-    const timerEl = document.getElementById('timer');
     const newActivityNameInput = document.getElementById('new-activity-name');
     const deletePresetBtn = document.getElementById('delete-preset-btn');
     const startStopBtn = document.getElementById('start-stop-btn');
@@ -42,7 +40,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- DATA HANDLING & MIGRATION ---
     function migrateData() {
-        // Migrate presets from string array to object array with hashed colors
         const oldPresets = JSON.parse(localStorage.getItem('presets'));
         if (oldPresets && Array.isArray(oldPresets) && typeof oldPresets[0] === 'string') {
             presets = oldPresets.map(name => ({ name, color: generateColorFromString(name) }));
@@ -50,8 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             presets = oldPresets || [];
         }
-
-        // Migrate activities to have UUIDs
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
             if (key.startsWith('log-')) {
@@ -151,28 +146,22 @@ document.addEventListener('DOMContentLoaded', () => {
     function render() {
         loadActivities();
         loadPresets();
-        renderControlCenter();
+        renderStartStopButton();
+        renderPresets();
         renderLog();
         renderRecentDays();
         updateDateSpecificUI();
     }
 
-    function renderControlCenter() {
+    function renderStartStopButton() {
         const current = activities.find(a => !a.endTime);
         if (current) {
-            const color = getActivityColor(current.name);
-            currentActivityDisplay.innerHTML = `Current: <span class="activity-name" style="color: ${color}">${current.name}</span>`;
             startStopBtn.textContent = 'Stop';
             startStopBtn.classList.add('stop-btn');
-            startTimer(current.startTime);
         } else {
-            currentActivityDisplay.innerHTML = `<span class="idle">Idle</span>`;
-            timerEl.textContent = '00h 00m';
             startStopBtn.textContent = 'Start';
             startStopBtn.classList.remove('stop-btn');
-            stopTimer();
         }
-        renderPresets();
     }
 
     function renderPresets() {
@@ -188,24 +177,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderLog() {
         activityLogEl.innerHTML = '';
-        const completed = activities.filter(a => a.endTime).sort((a, b) => b.startTime - a.startTime);
-        completed.forEach(activity => {
+        stopTimer();
+
+        const allActivities = [...activities].sort((a, b) => b.startTime - a.startTime);
+        
+        allActivities.forEach(activity => {
             const color = getActivityColor(activity.name);
             const li = document.createElement('li');
             li.className = 'log-item';
             li.style.borderColor = color;
             li.dataset.id = activity.id;
+
+            const isRunning = !activity.endTime;
+            if (isRunning) {
+                li.classList.add('is-running');
+                startTimer(activity.startTime, activity.id);
+            }
+
+            const duration = (isRunning ? Date.now() : activity.endTime) - activity.startTime;
+            const endTimeString = isRunning ? 'Now' : new Date(activity.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
             li.innerHTML = `
                 <div class="log-item-view">
                     <div class="log-info">
                         <div class="log-name">${activity.name}</div>
-                        <div class="log-time">${new Date(activity.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${new Date(activity.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                        <div class="log-time">${new Date(activity.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${endTimeString}</div>
                     </div>
-                    <div class="log-duration">${formatDuration(activity.endTime - activity.startTime)}</div>
+                    <div class="log-duration">${formatDuration(duration)}</div>
                 </div>
                 <div class="log-item-edit">
                     <input type="datetime-local" class="edit-start" value="${toDateTimeLocalString(new Date(activity.startTime))}">
-                    <input type="datetime-local" class="edit-end" value="${toDateTimeLocalString(new Date(activity.endTime))}">
+                    <input type="datetime-local" class="edit-end" value="${toDateTimeLocalString(new Date(activity.endTime || Date.now()))}">
                     <div class="edit-controls">
                         <button class="save-btn">Save</button>
                         <button class="cancel-btn">Cancel</button>
@@ -233,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const summaryBar = document.createElement('div');
             summaryBar.className = 'day-summary-bar';
             if (totalMs > 0) {
-                const completedActivities = dayActivities.filter(a => a.endTime).sort((a,b) => a.startTime - b.startTime);
+                const completedActivities = dayActivities.filter(a => a.endTime).sort((a,b) => a.endTime - b.endTime);
                 completedActivities.forEach(activity => {
                     const duration = activity.endTime - activity.startTime;
                     const color = getActivityColor(activity.name);
@@ -257,25 +259,34 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function updateDateSpecificUI() {
         const isToday = formatDate(viewDate) === formatDate(new Date());
-        logTitleEl.textContent = isToday ? "Today's Log" : `Log for ${viewDate.toLocaleDateString()}`;
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        let title = viewDate.toLocaleDateString(undefined, options);
+        if (isToday) {
+            title += ' - Today';
+        }
+        logTitleEl.textContent = title;
         setDateBtn.hidden = formatDate(viewDate) === formatDate(effectiveDate);
     }
 
     // --- TIMER & FORMATTING ---
-    const startTimer = (startTime) => {
+    const startTimer = (startTime, activityId) => {
         if (timerInterval) clearInterval(timerInterval);
-        timerInterval = setInterval(() => { timerEl.textContent = formatDuration(Date.now() - startTime, true); }, 1000);
+        timerInterval = setInterval(() => {
+            const logItem = activityLogEl.querySelector(`.log-item[data-id="${activityId}"]`);
+            if (logItem) {
+                const durationEl = logItem.querySelector('.log-duration');
+                const timeEl = logItem.querySelector('.log-time');
+                durationEl.textContent = formatDuration(Date.now() - startTime);
+                timeEl.textContent = `${new Date(startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - Now`;
+            }
+        }, 1000 * 60); // Update every minute
     };
     const stopTimer = () => { if (timerInterval) clearInterval(timerInterval); };
-    const formatDuration = (ms, showSeconds = false) => {
+    const formatDuration = (ms) => {
         if (ms < 0) ms = 0;
         const totalMinutes = Math.floor(ms / 60000);
         const hrs = Math.floor(totalMinutes / 60);
         const mins = totalMinutes % 60;
-        if (showSeconds) {
-            const secs = Math.floor((ms % 60000) / 1000);
-            return `${String(hrs).padStart(2, '0')}h ${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
-        }
         return `${hrs}h ${mins}m`;
     };
     const updateTotalTime = () => {
@@ -326,7 +337,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./service-worker.js').catch(err => console.error('SW reg failed:', err));
         }
-        // Check online status once at startup
         if (!navigator.onLine) {
             document.body.classList.add('offline');
         }

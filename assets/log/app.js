@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- UTILITY & COLOR ---
     const formatDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const formatDateForDisplay = (date) => date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
     const getStorageKey = (date) => `log-${formatDate(date)}`;
     const toDateTimeLocalString = (date) => `${formatDate(date)}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
     const truncateToMinute = (ms) => Math.floor(ms / 60000) * 60000;
@@ -228,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (formatDate(date) === formatDate(viewDate)) li.classList.add('active');
             li.dataset.date = date.toISOString();
             
-            li.querySelector('.recent-day-date').textContent = i === 0 ? 'Today' : date.toLocaleDateString([], { weekday: 'long' });
+            li.querySelector('.recent-day-date').textContent = formatDateForDisplay(date);
             li.querySelector('.recent-day-total').textContent = formatDuration(totalMs);
 
             const summaryBar = li.querySelector('.day-summary-bar');
@@ -250,8 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function updateDateSpecificUI() {
         const isToday = formatDate(viewDate) === formatDate(new Date());
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        let title = viewDate.toLocaleDateString(undefined, options);
+        let title = formatDateForDisplay(viewDate);
         if (isToday) {
             title += ' - Today';
         }

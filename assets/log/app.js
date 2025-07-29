@@ -279,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 durationEl.textContent = formatDuration(Date.now() - startTime);
                 timeEl.textContent = `${new Date(startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - Now`;
             }
-        }, 1000 * 60); // Update every minute
+        }, 1000 * 1);
     };
     const stopTimer = () => { if (timerInterval) clearInterval(timerInterval); };
     const formatDuration = (ms) => {

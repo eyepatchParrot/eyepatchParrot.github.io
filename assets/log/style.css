@@ -1,0 +1,137 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+    color: white;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.header h1 {
+    font-size: 2.5rem;
+    background: linear-gradient(45deg, #68d391, #4fd1c7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 20px;
+}
+
+.card h2 {
+    margin-bottom: 15px;
+    color: #68d391;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 10px;
+}
+
+/* Start Activity Section */
+.start-activity-form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.activity-input {
+    flex-grow: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 1rem;
+}
+.activity-input::placeholder { color: rgba(255, 255, 255, 0.6); }
+
+button {
+    background: linear-gradient(45deg, #4fd1c7, #68d391);
+    border: none;
+    padding: 12px 24px;
+    border-radius: 25px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+}
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(79, 209, 199, 0.3);
+}
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.preset-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.preset-buttons button {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 8px 16px;
+    font-size: 0.9rem;
+}
+
+/* Current Activity Section */
+.current-info { text-align: center; }
+.current-info p { font-size: 1.2rem; margin-bottom: 10px; }
+#current-activity-name { font-weight: bold; color: #4fd1c7; }
+.timer { font-size: 3rem; font-weight: bold; margin: 15px 0; font-family: 'Courier New', monospace; }
+.stop-btn { background: linear-gradient(45deg, #fc8181, #f687b3); }
+.stop-btn:hover { box-shadow: 0 10px 20px rgba(252, 129, 129, 0.3); }
+
+/* Log Section */
+.log-header { display: flex; justify-content: space-between; align-items: center; }
+.log-header button { font-size: 0.8rem; padding: 6px 12px; background: #68d391; }
+.total-today { background: rgba(104, 211, 145, 0.2); border-radius: 10px; padding: 15px; margin: 15px 0; text-align: center; font-size: 1.1rem; }
+.log-list { list-style: none; padding: 0; }
+.log-item { background: rgba(255, 255, 255, 0.05); border-radius: 10px; padding: 15px; margin-bottom: 10px; cursor: pointer; }
+.log-item-view { display: flex; justify-content: space-between; align-items: center; }
+.log-info { flex: 1; }
+.log-name { font-weight: bold; margin-bottom: 5px; }
+.log-time { color: #4fd1c7; font-size: 0.9rem; }
+.log-duration { font-size: 1.2rem; font-weight: bold; color: #68d391; }
+.log-item-edit { display: none; flex-direction: column; gap: 10px; }
+.log-item-edit .edit-field { display: flex; flex-direction: column; }
+.log-item-edit label { font-size: 0.8rem; margin-bottom: 5px; color: rgba(255,255,255,0.7); }
+.log-item-edit input { background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px; border-radius: 5px; }
+.edit-controls { display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px; }
+.edit-controls button { font-size: 0.9rem; padding: 8px 16px; }
+.save-btn { background: linear-gradient(45deg, #4fd1c7, #68d391); }
+.cancel-btn, .delete-btn { background: linear-gradient(45deg, #e53e3e, #fc8181); }
+
+/* Recent Days Section */
+.recent-days-list { list-style: none; padding: 0; }
+.recent-day-item { display: flex; justify-content: space-between; padding: 12px; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
+.recent-day-item:hover, .recent-day-item.active { background: rgba(104, 211, 145, 0.2); }
+.recent-day-date { font-weight: bold; }
+
+.offline-indicator { position: fixed; top: 10px; right: 10px; background: #e53e3e; color: white; padding: 5px 10px; border-radius: 15px; font-size: 0.8rem; display: none; }
+body.offline .offline-indicator { display: block; }
+[hidden] { display: none !important; }

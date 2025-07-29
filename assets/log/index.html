@@ -50,6 +50,48 @@
 
     </div>
 
+    <!-- Templates for dynamic content -->
+    <template id="preset-button-template">
+        <button class="preset-button"></button>
+    </template>
+
+    <template id="log-item-template">
+        <li class="log-item">
+            <div class="log-item-view">
+                <div class="log-info">
+                    <div class="log-name"></div>
+                    <div class="log-time"></div>
+                </div>
+                <div class="log-duration"></div>
+            </div>
+            <div class="log-item-edit">
+                <div class="edit-field">
+                    <label>Start Time</label>
+                    <input type="datetime-local" class="edit-start">
+                </div>
+                <div class="edit-field">
+                    <label>End Time</label>
+                    <input type="datetime-local" class="edit-end">
+                </div>
+                <div class="edit-controls">
+                    <button class="save-btn">Save</button>
+                    <button class="cancel-btn">Cancel</button>
+                    <button class="delete-btn">Delete</button>
+                </div>
+            </div>
+        </li>
+    </template>
+
+    <template id="recent-day-template">
+        <li class="recent-day-item">
+            <div class="recent-day-header">
+                <span class="recent-day-date"></span>
+                <span class="recent-day-total"></span>
+            </div>
+            <div class="day-summary-bar"></div>
+        </li>
+    </template>
+
     <script src="app.js"></script>
 </body>
 </html>

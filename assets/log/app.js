@@ -10,6 +10,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const activityLogEl = document.getElementById('activity-log');
     const recentDaysListEl = document.getElementById('recent-days-list');
 
+    // --- Templates ---
+    const presetButtonTemplate = document.getElementById('preset-button-template');
+    const logItemTemplate = document.getElementById('log-item-template');
+    const recentDayTemplate = document.getElementById('recent-day-template');
+
     // --- App State ---
     let activities = [];
     let presets = [];
@@ -167,11 +172,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderPresets() {
         presetButtonsContainer.innerHTML = '';
         presets.forEach(preset => {
-            const button = document.createElement('button');
+            const clone = presetButtonTemplate.content.cloneNode(true);
+            const button = clone.querySelector('button');
             button.textContent = preset.name;
             button.style.borderColor = preset.color;
             button.addEventListener('click', () => startActivity(preset.name));
-            presetButtonsContainer.appendChild(button);
+            presetButtonsContainer.appendChild(clone);
         });
     }
 
@@ -182,9 +188,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const allActivities = [...activities].sort((a, b) => b.startTime - a.startTime);
         
         allActivities.forEach(activity => {
+            const clone = logItemTemplate.content.cloneNode(true);
+            const li = clone.querySelector('.log-item');
             const color = getActivityColor(activity.name);
-            const li = document.createElement('li');
-            li.className = 'log-item';
             li.style.borderColor = color;
             li.dataset.id = activity.id;
 
@@ -197,24 +203,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const duration = (isRunning ? Date.now() : activity.endTime) - activity.startTime;
             const endTimeString = isRunning ? 'Now' : new Date(activity.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-            li.innerHTML = `
-                <div class="log-item-view">
-                    <div class="log-info">
-                        <div class="log-name">${activity.name}</div>
-                        <div class="log-time">${new Date(activity.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${endTimeString}</div>
-                    </div>
-                    <div class="log-duration">${formatDuration(duration)}</div>
-                </div>
-                <div class="log-item-edit">
-                    <input type="datetime-local" class="edit-start" value="${toDateTimeLocalString(new Date(activity.startTime))}">
-                    <input type="datetime-local" class="edit-end" value="${toDateTimeLocalString(new Date(activity.endTime || Date.now()))}">
-                    <div class="edit-controls">
-                        <button class="save-btn">Save</button>
-                        <button class="cancel-btn">Cancel</button>
-                        <button class="delete-btn">Delete</button>
-                    </div>
-                </div>`;
-            activityLogEl.appendChild(li);
+            li.querySelector('.log-name').textContent = activity.name;
+            li.querySelector('.log-time').textContent = `${new Date(activity.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${endTimeString}`;
+            li.querySelector('.log-duration').textContent = formatDuration(duration);
+            li.querySelector('.edit-start').value = toDateTimeLocalString(new Date(activity.startTime));
+            li.querySelector('.edit-end').value = toDateTimeLocalString(new Date(activity.endTime || Date.now()));
+            
+            activityLogEl.appendChild(clone);
         });
         updateTotalTime();
     }
@@ -227,13 +222,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const dayActivities = JSON.parse(localStorage.getItem(getStorageKey(date))) || [];
             const totalMs = dayActivities.reduce((sum, a) => sum + (a.endTime ? a.endTime - a.startTime : 0), 0);
 
-            const li = document.createElement('li');
-            li.className = 'recent-day-item';
+            const clone = recentDayTemplate.content.cloneNode(true);
+            const li = clone.querySelector('.recent-day-item');
+            
             if (formatDate(date) === formatDate(viewDate)) li.classList.add('active');
             li.dataset.date = date.toISOString();
             
-            const summaryBar = document.createElement('div');
-            summaryBar.className = 'day-summary-bar';
+            li.querySelector('.recent-day-date').textContent = i === 0 ? 'Today' : date.toLocaleDateString([], { weekday: 'long' });
+            li.querySelector('.recent-day-total').textContent = formatDuration(totalMs);
+
+            const summaryBar = li.querySelector('.day-summary-bar');
             if (totalMs > 0) {
                 const completedActivities = dayActivities.filter(a => a.endTime).sort((a,b) => a.endTime - b.endTime);
                 completedActivities.forEach(activity => {
@@ -246,14 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     summaryBar.appendChild(segment);
                 });
             }
-
-            li.innerHTML = `
-                <div class="recent-day-header">
-                    <span class="recent-day-date">${i === 0 ? 'Today' : date.toLocaleDateString([], { weekday: 'long' })}</span>
-                    <span class="recent-day-total">${formatDuration(totalMs)}</span>
-                </div>`;
-            li.appendChild(summaryBar);
-            recentDaysListEl.appendChild(li);
+            recentDaysListEl.appendChild(clone);
         }
     }
     
@@ -337,6 +328,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./service-worker.js').catch(err => console.error('SW reg failed:', err));
         }
+        window.addEventListener('offline', () => document.body.classList.add('offline'));
+        window.addEventListener('online', () => document.body.classList.remove('offline'));
         if (!navigator.onLine) {
             document.body.classList.add('offline');
         }

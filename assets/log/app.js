@@ -1,8 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
-    const currentActivityCard = document.getElementById('current-activity-card');
+    const currentActivityDisplay = document.getElementById('current-activity-display');
+    const timerEl = document.getElementById('timer');
     const newActivityNameInput = document.getElementById('new-activity-name');
-    const startActivityBtn = document.getElementById('start-activity-btn');
+    const deletePresetBtn = document.getElementById('delete-preset-btn');
+    const startStopBtn = document.getElementById('start-stop-btn');
     const presetButtonsContainer = document.getElementById('preset-buttons');
     const logTitleEl = document.getElementById('log-title');
     const setDateBtn = document.getElementById('set-date-btn');
@@ -12,75 +14,131 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- App State ---
     let activities = [];
-    let presets = JSON.parse(localStorage.getItem('presets')) || ['Work', 'Play', 'Eat', 'Sleep'];
+    let presets = [];
     let timerInterval = null;
     let viewDate = new Date();
-    let effectiveDate = new Date(); // The date used for creating new entries
+    let effectiveDate = new Date();
 
-    // --- UTILITY FUNCTIONS ---
+    // --- UTILITY & COLOR ---
     const formatDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     const getStorageKey = (date) => `log-${formatDate(date)}`;
-    const parseDateTimeLocal = (str) => new Date(str);
-    const toDateTimeLocalString = (date) => {
-        const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const d = String(date.getDate()).padStart(2, '0');
-        const h = String(date.getHours()).padStart(2, '0');
-        const min = String(date.getMinutes()).padStart(2, '0');
-        return `${y}-${m}-${d}T${h}:${min}`;
-    };
+    const toDateTimeLocalString = (date) => `${formatDate(date)}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    const truncateToMinute = (ms) => Math.floor(ms / 60000) * 60000;
+    const generateUUID = () => ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
 
-    // --- DATA HANDLING ---
+    function generateColorFromString(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const h = hash % 360;
+        return `hsl(${h}, 70%, 50%)`;
+    }
+
+    function getActivityColor(name) {
+        const preset = presets.find(p => p.name === name);
+        return preset ? preset.color : generateColorFromString(name);
+    }
+
+    // --- DATA HANDLING & MIGRATION ---
+    function migrateData() {
+        // Migrate presets from string array to object array with hashed colors
+        const oldPresets = JSON.parse(localStorage.getItem('presets'));
+        if (oldPresets && Array.isArray(oldPresets) && typeof oldPresets[0] === 'string') {
+            presets = oldPresets.map(name => ({ name, color: generateColorFromString(name) }));
+            savePresets();
+        } else {
+            presets = oldPresets || [];
+        }
+
+        // Migrate activities to have UUIDs
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.startsWith('log-')) {
+                let needsSave = false;
+                const dayActivities = JSON.parse(localStorage.getItem(key));
+                dayActivities.forEach(act => {
+                    if (typeof act.id !== 'string') {
+                        act.id = generateUUID();
+                        needsSave = true;
+                    }
+                });
+                if (needsSave) {
+                    localStorage.setItem(key, JSON.stringify(dayActivities));
+                }
+            }
+        }
+    }
+    const loadPresets = () => { presets = JSON.parse(localStorage.getItem('presets')) || []; };
+    const savePresets = () => { localStorage.setItem('presets', JSON.stringify(presets)); };
     const loadActivities = () => { activities = JSON.parse(localStorage.getItem(getStorageKey(viewDate))) || []; };
     const saveActivities = () => { localStorage.setItem(getStorageKey(viewDate), JSON.stringify(activities)); };
-    const savePresets = () => { localStorage.setItem('presets', JSON.stringify(presets)); };
 
     // --- CORE LOGIC ---
+    function handleStartStop() {
+        const current = activities.find(a => !a.endTime);
+        if (current) {
+            stopCurrentActivity();
+        } else {
+            startActivity(newActivityNameInput.value);
+        }
+    }
+
     function startActivity(name) {
         name = name.trim();
         if (!name) return;
 
-        stopCurrentActivity(); // End previous activity if any
+        stopCurrentActivity();
+
+        if (!presets.find(p => p.name === name)) {
+            presets.push({ name, color: generateColorFromString(name) });
+            savePresets();
+        }
 
         const newActivity = {
-            id: Date.now(),
+            id: generateUUID(),
             name,
-            startTime: new Date(effectiveDate).setHours(new Date().getHours(), new Date().getMinutes(), new Date().getSeconds()),
+            startTime: truncateToMinute(new Date(effectiveDate).setHours(new Date().getHours(), new Date().getMinutes())),
             endTime: null
         };
         
-        // If starting on a different day, load that day's activities
         if (formatDate(viewDate) !== formatDate(effectiveDate)) {
             viewDate = new Date(effectiveDate);
             loadActivities();
         }
 
         activities.push(newActivity);
-        if (!presets.includes(name)) {
-            presets.push(name);
-            savePresets();
-        }
         saveActivities();
+        newActivityNameInput.value = '';
         render();
     }
 
     function stopCurrentActivity() {
         const current = activities.find(a => !a.endTime);
         if (current) {
-            current.endTime = Date.now();
+            current.endTime = truncateToMinute(Date.now());
             saveActivities();
+            render();
         }
     }
 
-    function updateActivity(id, newName, newStart, newEnd) {
+    function updateActivity(id, newStart, newEnd) {
         const activity = activities.find(a => a.id === id);
         if (activity) {
-            activity.name = newName;
             activity.startTime = newStart;
             activity.endTime = newEnd;
             saveActivities();
             render();
         }
+    }
+
+    function deletePreset() {
+        const name = newActivityNameInput.value.trim();
+        if (!name) return;
+        presets = presets.filter(p => p.name !== name);
+        savePresets();
+        newActivityNameInput.value = '';
+        render();
     }
 
     function deleteActivity(id) {
@@ -92,46 +150,38 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- RENDERING ---
     function render() {
         loadActivities();
-        renderCurrentActivity();
-        renderPresets();
+        loadPresets();
+        renderControlCenter();
         renderLog();
         renderRecentDays();
         updateDateSpecificUI();
     }
 
-    function renderCurrentActivity() {
+    function renderControlCenter() {
         const current = activities.find(a => !a.endTime);
         if (current) {
-            currentActivityCard.innerHTML = `
-                <h2>Current Activity</h2>
-                <div class="current-info">
-                    <p><span id="current-activity-name">${current.name}</span></p>
-                    <div class="timer" id="timer">00:00:00</div>
-                    <div class="controls">
-                        <button id="stop-btn" class="stop-btn">Stop</button>
-                    </div>
-                </div>`;
-            currentActivityCard.hidden = false;
-            document.getElementById('stop-btn').addEventListener('click', () => {
-                stopCurrentActivity();
-                render();
-            });
+            const color = getActivityColor(current.name);
+            currentActivityDisplay.innerHTML = `Current: <span class="activity-name" style="color: ${color}">${current.name}</span>`;
+            startStopBtn.textContent = 'Stop';
+            startStopBtn.classList.add('stop-btn');
             startTimer(current.startTime);
         } else {
-            currentActivityCard.hidden = true;
+            currentActivityDisplay.innerHTML = `<span class="idle">Idle</span>`;
+            timerEl.textContent = '00h 00m';
+            startStopBtn.textContent = 'Start';
+            startStopBtn.classList.remove('stop-btn');
             stopTimer();
         }
+        renderPresets();
     }
 
     function renderPresets() {
         presetButtonsContainer.innerHTML = '';
         presets.forEach(preset => {
             const button = document.createElement('button');
-            button.textContent = preset;
-            button.addEventListener('click', () => {
-                newActivityNameInput.value = preset;
-                startActivity(preset);
-            });
+            button.textContent = preset.name;
+            button.style.borderColor = preset.color;
+            button.addEventListener('click', () => startActivity(preset.name));
             presetButtonsContainer.appendChild(button);
         });
     }
@@ -139,34 +189,23 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderLog() {
         activityLogEl.innerHTML = '';
         const completed = activities.filter(a => a.endTime).sort((a, b) => b.startTime - a.startTime);
-
         completed.forEach(activity => {
+            const color = getActivityColor(activity.name);
             const li = document.createElement('li');
             li.className = 'log-item';
+            li.style.borderColor = color;
             li.dataset.id = activity.id;
-            const duration = activity.endTime - activity.startTime;
-
             li.innerHTML = `
                 <div class="log-item-view">
                     <div class="log-info">
                         <div class="log-name">${activity.name}</div>
-                        <div class="log-time">${new Date(activity.startTime).toLocaleTimeString()} - ${new Date(activity.endTime).toLocaleTimeString()}</div>
+                        <div class="log-time">${new Date(activity.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${new Date(activity.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
                     </div>
-                    <div class="log-duration">${formatDuration(duration)}</div>
+                    <div class="log-duration">${formatDuration(activity.endTime - activity.startTime)}</div>
                 </div>
                 <div class="log-item-edit">
-                    <div class="edit-field">
-                        <label>Name</label>
-                        <input type="text" class="edit-name" value="${activity.name}">
-                    </div>
-                    <div class="edit-field">
-                        <label>Start Time</label>
-                        <input type="datetime-local" class="edit-start" value="${toDateTimeLocalString(new Date(activity.startTime))}">
-                    </div>
-                    <div class="edit-field">
-                        <label>End Time</label>
-                        <input type="datetime-local" class="edit-end" value="${toDateTimeLocalString(new Date(activity.endTime))}">
-                    </div>
+                    <input type="datetime-local" class="edit-start" value="${toDateTimeLocalString(new Date(activity.startTime))}">
+                    <input type="datetime-local" class="edit-end" value="${toDateTimeLocalString(new Date(activity.endTime))}">
                     <div class="edit-controls">
                         <button class="save-btn">Save</button>
                         <button class="cancel-btn">Cancel</button>
@@ -183,47 +222,61 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < 7; i++) {
             const date = new Date();
             date.setDate(date.getDate() - i);
-            const key = getStorageKey(date);
-            const dayActivities = JSON.parse(localStorage.getItem(key)) || [];
-            const total = dayActivities.reduce((sum, a) => sum + (a.endTime ? a.endTime - a.startTime : 0), 0);
+            const dayActivities = JSON.parse(localStorage.getItem(getStorageKey(date))) || [];
+            const totalMs = dayActivities.reduce((sum, a) => sum + (a.endTime ? a.endTime - a.startTime : 0), 0);
 
             const li = document.createElement('li');
             li.className = 'recent-day-item';
             if (formatDate(date) === formatDate(viewDate)) li.classList.add('active');
             li.dataset.date = date.toISOString();
+            
+            const summaryBar = document.createElement('div');
+            summaryBar.className = 'day-summary-bar';
+            if (totalMs > 0) {
+                const completedActivities = dayActivities.filter(a => a.endTime).sort((a,b) => a.startTime - b.startTime);
+                completedActivities.forEach(activity => {
+                    const duration = activity.endTime - activity.startTime;
+                    const color = getActivityColor(activity.name);
+                    const segment = document.createElement('div');
+                    segment.style.width = `${(duration / totalMs) * 100}%`;
+                    segment.style.backgroundColor = color;
+                    segment.title = `${activity.name}: ${formatDuration(duration)}`;
+                    summaryBar.appendChild(segment);
+                });
+            }
+
             li.innerHTML = `
-                <span class="recent-day-date">${i === 0 ? 'Today' : i === 1 ? 'Yesterday' : date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</span>
-                <span class="recent-day-total">${formatDuration(total)}</span>`;
+                <div class="recent-day-header">
+                    <span class="recent-day-date">${i === 0 ? 'Today' : date.toLocaleDateString([], { weekday: 'long' })}</span>
+                    <span class="recent-day-total">${formatDuration(totalMs)}</span>
+                </div>`;
+            li.appendChild(summaryBar);
             recentDaysListEl.appendChild(li);
         }
     }
     
     function updateDateSpecificUI() {
         const isToday = formatDate(viewDate) === formatDate(new Date());
-        const isEffectiveDate = formatDate(viewDate) === formatDate(effectiveDate);
-
         logTitleEl.textContent = isToday ? "Today's Log" : `Log for ${viewDate.toLocaleDateString()}`;
-        setDateBtn.hidden = isEffectiveDate;
-        totalTodayEl.querySelector('strong').textContent = formatDuration(activities.reduce((sum, a) => sum + (a.endTime ? a.endTime - a.startTime : 0), 0));
+        setDateBtn.hidden = formatDate(viewDate) === formatDate(effectiveDate);
     }
 
     // --- TIMER & FORMATTING ---
     const startTimer = (startTime) => {
         if (timerInterval) clearInterval(timerInterval);
-        timerInterval = setInterval(() => {
-            document.querySelector('.timer').textContent = formatTime(Date.now() - startTime);
-        }, 1000);
+        timerInterval = setInterval(() => { timerEl.textContent = formatDuration(Date.now() - startTime, true); }, 1000);
     };
     const stopTimer = () => { if (timerInterval) clearInterval(timerInterval); };
-    const formatTime = (ms) => {
-        const s = Math.floor(ms / 1000);
-        return `${String(Math.floor(s / 3600)).padStart(2, '0')}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-    };
-    const formatDuration = (ms) => {
+    const formatDuration = (ms, showSeconds = false) => {
         if (ms < 0) ms = 0;
-        const mins = Math.floor(ms / 60000);
-        const hrs = Math.floor(mins / 60);
-        return `${hrs}h ${mins % 60}m`;
+        const totalMinutes = Math.floor(ms / 60000);
+        const hrs = Math.floor(totalMinutes / 60);
+        const mins = totalMinutes % 60;
+        if (showSeconds) {
+            const secs = Math.floor((ms % 60000) / 1000);
+            return `${String(hrs).padStart(2, '0')}h ${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
+        }
+        return `${hrs}h ${mins}m`;
     };
     const updateTotalTime = () => {
         const total = activities.filter(a => a.endTime).reduce((sum, a) => sum + (a.endTime - a.startTime), 0);
@@ -231,68 +284,52 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- EVENT LISTENERS ---
-    startActivityBtn.addEventListener('click', () => startActivity(newActivityNameInput.value));
-    newActivityNameInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') startActivity(newActivityNameInput.value); });
-    
-    setDateBtn.addEventListener('click', () => {
-        effectiveDate = new Date(viewDate);
-        render();
-    });
-
+    startStopBtn.addEventListener('click', handleStartStop);
+    newActivityNameInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleStartStop(); });
+    deletePresetBtn.addEventListener('click', deletePreset);
+    setDateBtn.addEventListener('click', () => { effectiveDate = new Date(viewDate); render(); });
     recentDaysListEl.addEventListener('click', (e) => {
         const item = e.target.closest('.recent-day-item');
-        if (item) {
-            viewDate = new Date(item.dataset.date);
-            render();
-        }
+        if (item) { viewDate = new Date(item.dataset.date); render(); }
     });
-
     activityLogEl.addEventListener('click', (e) => {
         const item = e.target.closest('.log-item');
         if (!item) return;
-        const id = parseInt(item.dataset.id);
+        const id = item.dataset.id;
         const view = item.querySelector('.log-item-view');
         const edit = item.querySelector('.log-item-edit');
 
         if (e.target.closest('.log-item-view')) {
+            document.querySelectorAll('.log-item-edit').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.log-item-view').forEach(el => el.style.display = 'flex');
             view.style.display = 'none';
             edit.style.display = 'flex';
         }
         if (e.target.classList.contains('save-btn')) {
-            const newName = edit.querySelector('.edit-name').value;
-            const newStart = parseDateTimeLocal(edit.querySelector('.edit-start').value).getTime();
-            const newEnd = parseDateTimeLocal(edit.querySelector('.edit-end').value).getTime();
-            updateActivity(id, newName, newStart, newEnd);
+            const newStart = truncateToMinute(new Date(edit.querySelector('.edit-start').value).getTime());
+            const newEnd = truncateToMinute(new Date(edit.querySelector('.edit-end').value).getTime());
+            updateActivity(id, newStart, newEnd);
         }
         if (e.target.classList.contains('cancel-btn')) {
             view.style.display = 'flex';
             edit.style.display = 'none';
         }
         if (e.target.classList.contains('delete-btn')) {
-            if (confirm('Are you sure you want to delete this entry?')) {
-                deleteActivity(id);
-            }
+            if (confirm('Are you sure?')) deleteActivity(id);
         }
     });
 
-    // --- PWA & OFFLINE ---
-    const registerServiceWorker = () => {
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./service-worker.js').catch(err => console.error('Service worker registration failed:', err));
-        }
-    };
-    const handleConnectionStatus = () => {
-        const update = () => document.body.classList.toggle('offline', !navigator.onLine);
-        window.addEventListener('online', update);
-        window.addEventListener('offline', update);
-        update();
-    };
-
-    // --- INITIALIZATION ---
+    // --- INIT ---
     function init() {
+        migrateData();
         render();
-        registerServiceWorker();
-        handleConnectionStatus();
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./service-worker.js').catch(err => console.error('SW reg failed:', err));
+        }
+        // Check online status once at startup
+        if (!navigator.onLine) {
+            document.body.classList.add('offline');
+        }
     }
 
     init();
